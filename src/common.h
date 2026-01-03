@@ -27,3 +27,13 @@ typedef struct {
   double *avg_steps;
   double *prob_within_k;
 } results_t;
+
+typedef struct {
+    uint32_t aktualna;
+    uint32_t celkovo;
+} progress_msg_t;
+
+typedef struct {
+    uint32_t replikacie;
+    uint32_t k_max;
+} start_msg_t;
