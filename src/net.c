@@ -1,110 +1,98 @@
+#define _DEFAULT_SOURCE
 #include "net.h"
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <netinet/in.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <unistd.h>
+#include <stdio.h>
 
-int net_listen(int port) {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) return -1;
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
-    int yes = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
-        close(fd);
+int net_pocuvaj(int port) {
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (socket_fd < 0) {
         return -1;
     }
 
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(port);
+    int jedna = 1;
 
-    if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        close(fd);
+    (void)setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &jedna, (socklen_t)sizeof(jedna));
+
+    struct sockaddr_in adresa;
+
+    memset(&adresa, 0, sizeof(adresa));
+
+    adresa.sin_family = AF_INET;
+    adresa.sin_addr.s_addr = htonl(INADDR_ANY);
+    adresa.sin_port = htons((uint16_t)port);
+
+    if (bind(socket_fd, (struct sockaddr *)&adresa, sizeof(adresa)) < 0) {
+        close(socket_fd);
         return -1;
     }
 
-    if (listen(fd, 16) < 0) {
-        close(fd);
+    if (listen(socket_fd, 8) < 0) {
+        close(socket_fd);
         return -1;
     }
 
-    return fd;
+    return socket_fd;
 }
 
-int net_accept(int listen_fd) {
-    return accept(listen_fd, NULL, NULL);
+int net_prijmi_klienta(int pasivny_socket) {
+    struct sockaddr_in klient;
+
+    socklen_t dlzka = sizeof(klient);
+
+    int c = accept(pasivny_socket, (struct sockaddr *)&klient, &dlzka);
+
+    return c;
 }
 
-int net_connect(const char *host, int port) {
-    if (!host) {
-        errno = EINVAL;
+int net_pripoj_sa(const char *host, int port) {
+    char port_text[32];
+
+    snprintf(port_text, sizeof(port_text), "%d", port);
+
+    struct addrinfo hints;
+
+    memset(&hints, 0, sizeof(hints));
+
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    struct addrinfo *res = NULL;
+
+    int rc = getaddrinfo(host, port_text, &hints, &res);
+
+    if (rc != 0 || res == NULL) {
         return -1;
     }
 
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) return -1;
+    int socket_fd = -1;
 
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    for (struct addrinfo *p = res; p != NULL; p = p->ai_next) {
+        socket_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
 
-    // host must be IPv4 like "127.0.0.1"
-    if (inet_pton(AF_INET, host, &addr.sin_addr) != 1) {
-        close(fd);
-        errno = EINVAL;
-        return -1;
-    }
-
-    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        close(fd);
-        return -1;
-    }
-
-    return fd;
-}
-
-ssize_t net_read_full(int fd, void *buf, size_t n) {
-    if (!buf && n > 0) {
-        errno = EINVAL;
-        return -1;
-    }
-
-    size_t off = 0;
-    while (off < n) {
-        ssize_t r = read(fd, (char *)buf + off, n - off);
-        if (r == 0) {
-            return (ssize_t)off; // closed
+        if (socket_fd < 0) {
+            continue;
         }
-        if (r < 0) {
-            if (errno == EINTR) continue;
-            return -1;
-        }
-        off += (size_t)r;
-    }
-    return (ssize_t)off;
-}
 
-ssize_t net_write_full(int fd, const void *buf, size_t n) {
-    if (!buf && n > 0) {
-        errno = EINVAL;
-        return -1;
+        if (connect(socket_fd, p->ai_addr, p->ai_addrlen) == 0) {
+            freeaddrinfo(res);
+            return socket_fd;
+        }
+
+        close(socket_fd);
+        socket_fd = -1;
     }
 
-    size_t off = 0;
-    while (off < n) {
-        ssize_t w = write(fd, (const char *)buf + off, n - off);
-        if (w < 0) {
-            if (errno == EINTR) continue;
-            return -1;
-        }
-        off += (size_t)w;
-    }
-    return (ssize_t)off;
+    freeaddrinfo(res);
+
+    return -1;
 }
+
 

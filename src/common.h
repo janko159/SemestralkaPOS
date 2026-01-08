@@ -1,39 +1,25 @@
-#define COMMON_H
-#include <stdint.h>
+#ifndef SPOLOCNE_H
+#define SPOLOCNE_H
 
-typedef enum {
-  MODE_INTERACTIVE = 1,
-  MODE_SUMMARY = 2
-} sim_mode_t;
+#define MSG_PRIEBEH   1
+#define MSG_TEXT      2
+#define MSG_CHYBA     3
+#define MSG_HOTOVO    4
 
-typedef struct{
-  int width;
-  int height;
-  int reps;
-  int k;
+#define SVET_TORUS        0
+#define SVET_PREKAZKY     1
 
-  double p_up;
-  double p_down;
-  double p_left;
-  double p_right;
+#define MOD_SUMARNY       0
+#define MOD_INTERAKTIVNY  1
 
-  sim_mode_t mode;
-} sim_params_t;
+#define ZOBRAZ_AVG        0
+#define ZOBRAZ_PROB       1
+#define ZOBRAZ_OBE        2
 
 typedef struct {
-  int width;
-  int height;
+    int aktualna_replikacia;
+    int celkovy_pocet_replikacii;
+} sprava_priebeh_t;
 
-  double *avg_steps;
-  double *prob_within_k;
-} results_t;
+#endif
 
-typedef struct {
-    uint32_t aktualna;
-    uint32_t celkovo;
-} progress_msg_t;
-
-typedef struct {
-    uint32_t replikacie;
-    uint32_t k_max;
-} start_msg_t;

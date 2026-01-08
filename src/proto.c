@@ -1,25 +1,80 @@
+#define _DEFAULT_SOURCE
 #include "proto.h"
-#include "net.h"
 
-#include <arpa/inet.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <arpa/inet.h>
 
-int proto_send(int fd, msg_type_t type, const void *payload, uint32_t len) {
-    msg_hdr_t hdr;
-    hdr.type = htonl((uint32_t)type);
-    hdr.len  = htonl(len);
+typedef struct {
+    int typ_siete;
+    int dlzka_siete;
+} hlavicka_t;
 
-    if (net_write_full(fd, &hdr, sizeof(hdr)) != (ssize_t)sizeof(hdr)) {
+static int precitaj_presne(int socket, void *buffer, int dlzka) {
+    int precitane = 0;
+
+    while (precitane < dlzka) {
+        ssize_t r = read(socket, (char *)buffer + precitane, (size_t)(dlzka - precitane));
+
+        if (r == 0) {
+            return 0;
+        }
+
+        if (r < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            return -1;
+        }
+
+        precitane = precitane + (int)r;
+    }
+
+    return 1;
+}
+
+static int zapis_presne(int socket, const void *buffer, int dlzka) {
+    int zapisane = 0;
+
+    while (zapisane < dlzka) {
+        ssize_t w = write(socket, (const char *)buffer + zapisane, (size_t)(dlzka - zapisane));
+
+        if (w < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            return -1;
+        }
+
+        zapisane = zapisane + (int)w;
+    }
+
+    return 0;
+}
+
+static int na_siet(int hodnota) {
+    return (int)htonl((unsigned int)hodnota);
+}
+
+static int zo_siete(int hodnota) {
+    return (int)ntohl((unsigned int)hodnota);
+}
+
+int proto_posli(int socket, int typ_spravy, const void *data, int dlzka) {
+    hlavicka_t hlavicka;
+
+    hlavicka.typ_siete = na_siet(typ_spravy);
+    hlavicka.dlzka_siete = na_siet(dlzka);
+
+    if (zapis_presne(socket, &hlavicka, (int)sizeof(hlavicka)) != 0) {
         return -1;
     }
 
-    if (len > 0) {
-        if (!payload) {
-            errno = EINVAL;
-            return -1;
-        }
-        if (net_write_full(fd, payload, len) != (ssize_t)len) {
+    if (dlzka > 0 && data != NULL) {
+        if (zapis_presne(socket, data, dlzka) != 0) {
             return -1;
         }
     }
@@ -27,48 +82,61 @@ int proto_send(int fd, msg_type_t type, const void *payload, uint32_t len) {
     return 0;
 }
 
-int proto_recv(int fd, msg_type_t *type, void *buf, uint32_t cap, uint32_t *out_len) {
-    if (!type || !out_len) {
-        errno = EINVAL;
-        return -1;
+int proto_prijmi(
+    int socket,
+    int *typ_spravy,
+    void *buffer,
+    int kapacita_buffera,
+    int *dlzka_dat
+) {
+    hlavicka_t hlavicka;
+
+    int rc = precitaj_presne(socket, &hlavicka, (int)sizeof(hlavicka));
+
+    if (rc <= 0) {
+        return rc;
     }
 
-    msg_hdr_t hdr;
-    ssize_t r = net_read_full(fd, &hdr, sizeof(hdr));
-    if (r == 0) {
-        // peer closed cleanly
-        errno = 0;
-        return 0;
-    }
-    if (r != (ssize_t)sizeof(hdr)) {
-        return -1;
+    int typ = zo_siete(hlavicka.typ_siete);
+    int dlzka = zo_siete(hlavicka.dlzka_siete);
+
+    if (typ_spravy != NULL) {
+        *typ_spravy = typ;
     }
 
-    uint32_t n_type = ntohl(hdr.type);
-    uint32_t n_len  = ntohl(hdr.len);
+    if (dlzka_dat != NULL) {
+        *dlzka_dat = dlzka;
+    }
 
-    *type = (msg_type_t)n_type;
-
-    if (n_len == 0) {
-        *out_len = 0;
+    if (dlzka <= 0) {
         return 1;
     }
 
-    if (n_len > cap) {
-        errno = EMSGSIZE;
-        return -1;
+    if (buffer != NULL && dlzka <= kapacita_buffera) {
+        rc = precitaj_presne(socket, buffer, dlzka);
+        return rc;
     }
 
-    if (!buf) {
-        errno = EINVAL;
-        return -1;
+    char odpad[512];
+
+    int zostava = dlzka;
+
+    while (zostava > 0) {
+        int kus = zostava;
+
+        if (kus > (int)sizeof(odpad)) {
+            kus = (int)sizeof(odpad);
+        }
+
+        rc = precitaj_presne(socket, odpad, kus);
+
+        if (rc <= 0) {
+            return rc;
+        }
+
+        zostava = zostava - kus;
     }
 
-    if (net_read_full(fd, buf, n_len) != (ssize_t)n_len) {
-        return -1;
-    }
-
-    *out_len = n_len;
     return 1;
 }
 
