@@ -334,6 +334,9 @@ int simulacia_spusti(
                 }
 
                 while (!(x == ox && y == oy) && kroky < limit_krokov) {
+                    if (stop_flag != NULL && *stop_flag) {
+                        break;
+                    }
                     int smer = vyber_smer(pravd_hore, pravd_dole, pravd_vlavo, pravd_vpravo);
 
                     posun(typ_svetu, sirka, vyska, policka, &x, &y, smer);
@@ -344,7 +347,7 @@ int simulacia_spusti(
                         uspech_do_k = 1;
                     }
 
-                    if (je_to_trasa && callback_trasa_text != NULL && kroky <= 200) {
+                    if (je_to_trasa && callback_trasa_text != NULL) {
                         char riadok[128];
                         snprintf(riadok, sizeof(riadok), "  krok=%d pozicia=(%d,%d)\n", kroky, x - ox, y - oy);
                         callback_trasa_text(riadok, user);
@@ -402,4 +405,5 @@ int simulacia_spusti(
 
     return 0;
 }
+
 
