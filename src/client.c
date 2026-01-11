@@ -53,13 +53,13 @@ typedef struct {
     int trasa_aktivna; /* 0/1 */
 } klient_stav_t;
 
-static void vycisti_stdin(void) {
+void vycisti_stdin(void) {
     int c;
     while ((c = getchar()) != '\n' && c != EOF) {
     }
 }
 
-static void nacitaj_riadok(char *buffer, int kapacita) {
+void nacitaj_riadok(char *buffer, int kapacita) {
     if (fgets(buffer, kapacita, stdin) == NULL) {
         buffer[0] = '\0';
         return;
@@ -73,7 +73,7 @@ static void nacitaj_riadok(char *buffer, int kapacita) {
     }
 }
 
-static void sleep_ms(long ms) {
+void sleep_ms(long ms) {
     if (ms <= 0) return;
 
     struct timespec ts;
@@ -86,16 +86,16 @@ static void sleep_ms(long ms) {
     }
 }
 
-static void clear_screen(void) {
-    /* ANSI clear + home */
+void clear_screen(void) {
+    
     printf("\033[H\033[J");
 }
 
-static int idx(int x, int y, int w) {
+int idx(int x, int y, int w) {
     return y * w + x;
 }
 
-static void vykresli_interaktivne(klient_stav_t *stav, const char *stavovy_text) {
+void vykresli_interaktivne(klient_stav_t *stav, const char *stavovy_text) {
     if (stav == NULL) return;
 
     pthread_mutex_lock(&stav->mutex);
@@ -130,7 +130,7 @@ static void vykresli_interaktivne(klient_stav_t *stav, const char *stavovy_text)
         printf("%s\n", stavovy_text);
     }
     printf("\n");
-
+    /*Vyjreslovanie mapy pri interaktivnom mode*/
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
             char c = '.';
@@ -159,7 +159,7 @@ static void vykresli_interaktivne(klient_stav_t *stav, const char *stavovy_text)
     fflush(stdout);
 }
 
-static void vykresli_vysledok_podla_zobrazenia(const char *text, int zobrazenie) {
+ void vykresli_vysledok_podla_zobrazenia(const char *text, int zobrazenie) {
     if (text == NULL) {
         return;
     }
@@ -200,7 +200,7 @@ static void vykresli_vysledok_podla_zobrazenia(const char *text, int zobrazenie)
     }
 }
 
-static int parse_trasa_line(const char *s, int *rep, int *dx, int *dy) {
+ int parse_trasa_line(const char *s, int *rep, int *dx, int *dy) {
     if (s == NULL) return 0;
     int r = 0, x = 0, y = 0;
 
@@ -214,11 +214,11 @@ static int parse_trasa_line(const char *s, int *rep, int *dx, int *dy) {
     return 0;
 }
 
-static int parse_krok_line(const char *s, int *krok, int *dx, int *dy) {
+ int parse_krok_line(const char *s, int *krok, int *dx, int *dy) {
     if (s == NULL) return 0;
     int k = 0, x = 0, y = 0;
 
-    /* pozor: vo vystupe je pred 'krok' medzera (alebo viac medzier) */
+    
     if (sscanf(s, " krok=%d pozicia=(%d,%d)", &k, &x, &y) == 3) {
         if (krok) *krok = k;
         if (dx) *dx = x;
@@ -239,7 +239,7 @@ static int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y
         if (grid[idx(sx, sy, w)] != '#') return 0;
     }
 
-    /* jednoduchy scan: najdi prve volne policko (junior-friendly) */
+    /*Prve volne miesto bez prekazky*/
     for (int yy = 0; yy < h; yy++) {
         for (int xx = 0; xx < w; xx++) {
             if (grid[idx(xx, yy, w)] != '#') {
@@ -253,7 +253,7 @@ static int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y
     return -1;
 }
 
-static void *vlakno_prijem(void *arg) {
+ void *vlakno_prijem(void *arg) {
     klient_stav_t *stav = (klient_stav_t *)arg;
 
     while (1) {
@@ -461,12 +461,12 @@ static void *vlakno_prijem(void *arg) {
     return NULL;
 }
 
-static void posli_prikaz(int socket, const char *text) {
+ void posli_prikaz(int socket, const char *text) {
     if (text == NULL) return;
     (void)proto_posli(socket, MSG_TEXT, text, (int)strlen(text));
 }
 
-static int nacitaj_prikaz_neblokujuci(char *out, int cap, int timeout_ms) {
+ int nacitaj_prikaz_neblokujuci(char *out, int cap, int timeout_ms) {
     if (out == NULL || cap <= 0) return 0;
 
     fd_set rfds;
@@ -492,7 +492,7 @@ static int nacitaj_prikaz_neblokujuci(char *out, int cap, int timeout_ms) {
     return 1;
 }
 
-static void *vlakno_vstup(void *arg) {
+ void *vlakno_vstup(void *arg) {
     klient_stav_t *stav = (klient_stav_t *)arg;
 
     pthread_mutex_lock(&stav->mutex);
@@ -571,7 +571,7 @@ static void *vlakno_vstup(void *arg) {
     return NULL;
 }
 
-static int spusti_server_proces(int port) {
+ int spusti_server_proces(int port) {
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -597,12 +597,12 @@ static int spusti_server_proces(int port) {
     return (int)pid;
 }
 
-static int vyber_port_pre_server(void) {
+ int vyber_port_pre_server(void) {
     int port = 5000 + (getpid() % 20000);
     return port;
 }
 
-static int nacitaj_dve_inty(const char *prompt, int *a, int *b) {
+ int nacitaj_dve_inty(const char *prompt, int *a, int *b) {
     char riadok[128];
 
     while (1) {
@@ -622,7 +622,7 @@ static int nacitaj_dve_inty(const char *prompt, int *a, int *b) {
     }
 }
 
-static void vytvor_novu_simulaciu(void) {
+ void vytvor_novu_simulaciu(void) {
     int typ_svetu = 0;
 
     printf("Typ sveta (0=torus bez prekazok, 1=svet s prekazkami): ");
@@ -898,7 +898,7 @@ static void vytvor_novu_simulaciu(void) {
 }
 
 
-static void opatovne_spustenie_simulacie(void) {
+ void opatovne_spustenie_simulacie(void) {
     char vstup[256];
 
     printf("Subor s ulozenym vysledkom (z ktoreho sa nacta konfiguracia): ");

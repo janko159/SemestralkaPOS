@@ -1,3 +1,4 @@
+
 #define _DEFAULT_SOURCE
 #include "net.h"
 #include "proto.h"
@@ -15,12 +16,7 @@ typedef struct {
     pthread_mutex_t mutex;
 
     int pasivny_socket;
-
-    int *klientske_sockety;
-    int pocet_klientov;
-    int kapacita_klientov;
-
-    int admin_socket;
+    int klient_socket;
 
     int konfiguracia_je;
     int simulacia_bezi;
@@ -45,15 +41,30 @@ typedef struct {
 
 } server_stav_t;
 
-static void broadcast(server_stav_t *stav, int typ, const void *data, int dlzka) {
+static int posli_klientovi(server_stav_t *stav, int typ, const void *data, int dlzka) {
+    int rc = 0;
+
     pthread_mutex_lock(&stav->mutex);
 
-    for (int i = 0; i < stav->pocet_klientov; i++) {
-        (void)proto_posli(stav->klientske_sockety[i], typ, data, dlzka);
+    if (stav->klient_socket >= 0) {
+        rc = proto_posli(stav->klient_socket, typ, data, dlzka);
+        if (rc != 0) {
+            stav->stop_flag = 1;
+        }
+    } else {
+        rc = -1;
     }
 
     pthread_mutex_unlock(&stav->mutex);
+
+    return rc;
 }
+
+static void broadcast(server_stav_t *stav, int typ, const void *data, int dlzka) {
+    // kompatibilita: v single-client verzii posielame iba jednemu klientovi
+    (void)posli_klientovi(stav, typ, data, dlzka);
+}
+
 
 static void callback_priebeh(int aktualna, int celkovo, void *user) {
     server_stav_t *stav = (server_stav_t *)user;
@@ -140,48 +151,6 @@ static int parse_double(const char *s, double *out) {
     *out = v;
 
     return 0;
-}
-
-static void pridaj_klienta(server_stav_t *stav, int socket) {
-    pthread_mutex_lock(&stav->mutex);
-
-    if (stav->pocet_klientov == stav->kapacita_klientov) {
-        int nova_kapacita = (stav->kapacita_klientov == 0) ? 8 : stav->kapacita_klientov * 2;
-
-        int *novy = (int *)realloc(stav->klientske_sockety, (size_t)nova_kapacita * sizeof(int));
-
-        if (novy == NULL) {
-            pthread_mutex_unlock(&stav->mutex);
-            close(socket);
-            return;
-        }
-
-        stav->klientske_sockety = novy;
-        stav->kapacita_klientov = nova_kapacita;
-    }
-
-    stav->klientske_sockety[stav->pocet_klientov] = socket;
-    stav->pocet_klientov++;
-
-    if (stav->admin_socket == -1) {
-        stav->admin_socket = socket;
-    }
-
-    pthread_mutex_unlock(&stav->mutex);
-}
-
-static void odstran_klienta(server_stav_t *stav, int socket) {
-    pthread_mutex_lock(&stav->mutex);
-
-    for (int i = 0; i < stav->pocet_klientov; i++) {
-        if (stav->klientske_sockety[i] == socket) {
-            stav->klientske_sockety[i] = stav->klientske_sockety[stav->pocet_klientov - 1];
-            stav->pocet_klientov--;
-            break;
-        }
-    }
-
-    pthread_mutex_unlock(&stav->mutex);
 }
 
 static void *vlakno_simulacia(void *arg) {
@@ -271,13 +240,9 @@ static int spracuj_prikaz(server_stav_t *stav, int socket, char *prikaz) {
 
     if (strcmp(tokeny[0], "STOP") == 0) {
         pthread_mutex_lock(&stav->mutex);
-
-        if (socket == stav->admin_socket) {
-            stav->stop_flag = 1;
-        }
-
+        // single-client: ak sa klient odpojil, zastav simulaciu
+        stav->stop_flag = 1;
         pthread_mutex_unlock(&stav->mutex);
-
         (void)proto_posli(socket, MSG_TEXT, "STOP_ACK\n", (int)strlen("STOP_ACK\n"));
         return 0;
     }
@@ -495,6 +460,11 @@ static void *vlakno_klient(void *arg) {
     server_stav_t *stav = data->stav;
     int socket = data->socket;
 
+    // single-client: uloz socket do stavu
+    pthread_mutex_lock(&stav->mutex);
+    stav->klient_socket = socket;
+    pthread_mutex_unlock(&stav->mutex);
+
     free(data);
 
     while (1) {
@@ -519,7 +489,10 @@ static void *vlakno_klient(void *arg) {
         }
     }
 
-    odstran_klienta(stav, socket);
+    
+    pthread_mutex_lock(&stav->mutex);
+    stav->klient_socket = -1;
+    pthread_mutex_unlock(&stav->mutex);
 
     close(socket);
 
@@ -539,7 +512,7 @@ int main(int argc, char **argv) {
 
     pthread_mutex_init(&stav.mutex, NULL);
 
-    stav.admin_socket = -1;
+    stav.klient_socket = -1;
 
     stav.pasivny_socket = net_pocuvaj(port);
 
@@ -550,40 +523,40 @@ int main(int argc, char **argv) {
 
     printf("SERVER: pocuvam na porte %d\n", port);
 
-    while (1) {
+    {
         int klient = net_prijmi_klienta(stav.pasivny_socket);
-
         if (klient < 0) {
-            break;
+            fprintf(stderr, "SERVER: nepodarilo sa prijat klienta\n");
+            close(stav.pasivny_socket);
+            free(stav.policka);
+            pthread_mutex_destroy(&stav.mutex);
+            return 1;
         }
 
         printf("SERVER: klient pripojeny\n");
 
-        pridaj_klienta(&stav, klient);
-
         klient_vlakno_data_t *data = (klient_vlakno_data_t *)malloc(sizeof(klient_vlakno_data_t));
-
         if (data == NULL) {
             close(klient);
-            continue;
+            close(stav.pasivny_socket);
+            free(stav.policka);
+            pthread_mutex_destroy(&stav.mutex);
+            return 1;
         }
 
         data->stav = &stav;
         data->socket = klient;
 
-        pthread_t t;
-
-        pthread_create(&t, NULL, vlakno_klient, data);
-        pthread_detach(t);
+        // single-client: obsluha klienta prebehne v hlavnom vlákne (simulácia beží v samostatnom vlákne)
+        (void)vlakno_klient(data);
     }
+close(stav.pasivny_socket);
 
-    close(stav.pasivny_socket);
-
-    free(stav.klientske_sockety);
     free(stav.policka);
 
     pthread_mutex_destroy(&stav.mutex);
 
     return 0;
 }
+
 

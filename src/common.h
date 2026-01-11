@@ -1,4 +1,4 @@
-#ifndef SPOLOCNE_H
+gifndef SPOLOCNE_H
 #define SPOLOCNE_H
 
 #define MSG_PRIEBEH   1
