@@ -60,13 +60,12 @@ static int posli_klientovi(server_stav_t *stav, int typ, const void *data, int d
     return rc;
 }
 
-static void broadcast(server_stav_t *stav, int typ, const void *data, int dlzka) {
-    // kompatibilita: v single-client verzii posielame iba jednemu klientovi
+ void broadcast(server_stav_t *stav, int typ, const void *data, int dlzka) {
     (void)posli_klientovi(stav, typ, data, dlzka);
 }
 
 
-static void callback_priebeh(int aktualna, int celkovo, void *user) {
+ void callback_priebeh(int aktualna, int celkovo, void *user) {
     server_stav_t *stav = (server_stav_t *)user;
 
     sprava_priebeh_t sprava;
@@ -77,7 +76,7 @@ static void callback_priebeh(int aktualna, int celkovo, void *user) {
     broadcast(stav, MSG_PRIEBEH, &sprava, (int)sizeof(sprava));
 }
 
-static void callback_trasa_text(const char *text, void *user) {
+ void callback_trasa_text(const char *text, void *user) {
     server_stav_t *stav = (server_stav_t *)user;
 
     if (text == NULL) {
@@ -87,7 +86,7 @@ static void callback_trasa_text(const char *text, void *user) {
     broadcast(stav, MSG_TEXT, text, (int)strlen(text));
 }
 
-static void posli_chybu(int socket, const char *text) {
+ void posli_chybu(int socket, const char *text) {
     if (text == NULL) {
         text = "chyba";
     }
@@ -95,7 +94,7 @@ static void posli_chybu(int socket, const char *text) {
     (void)proto_posli(socket, MSG_CHYBA, text, (int)strlen(text));
 }
 
-static int rozdel_tokeny(char *text, char **tokeny, int max_tokenov) {
+ int rozdel_tokeny(char *text, char **tokeny, int max_tokenov) {
     int pocet = 0;
 
     char *p = text;
@@ -117,7 +116,7 @@ static int rozdel_tokeny(char *text, char **tokeny, int max_tokenov) {
     return pocet;
 }
 
-static int parse_int(const char *s, int *out) {
+ int parse_int(const char *s, int *out) {
     if (s == NULL || out == NULL) {
         return -1;
     }
@@ -125,7 +124,7 @@ static int parse_int(const char *s, int *out) {
     char *koniec = NULL;
 
     long v = strtol(s, &koniec, 10);
-
+ 
     if (koniec == s) {
         return -1;
     }
@@ -135,7 +134,7 @@ static int parse_int(const char *s, int *out) {
     return 0;
 }
 
-static int parse_double(const char *s, double *out) {
+ int parse_double(const char *s, double *out) {
     if (s == NULL || out == NULL) {
         return -1;
     }
@@ -153,7 +152,7 @@ static int parse_double(const char *s, double *out) {
     return 0;
 }
 
-static void *vlakno_simulacia(void *arg) {
+ void *vlakno_simulacia(void *arg) {
     server_stav_t *stav = (server_stav_t *)arg;
 
     vysledok_simulacie_t vysledok;
@@ -214,7 +213,7 @@ static void *vlakno_simulacia(void *arg) {
     exit(0);
 }
 
-static int spracuj_prikaz(server_stav_t *stav, int socket, char *prikaz) {
+ int spracuj_prikaz(server_stav_t *stav, int socket, char *prikaz) {
     if (prikaz == NULL) {
         return -1;
     }
@@ -454,13 +453,12 @@ typedef struct {
     int socket;
 } klient_vlakno_data_t;
 
-static void *vlakno_klient(void *arg) {
+ void *vlakno_klient(void *arg) {
     klient_vlakno_data_t *data = (klient_vlakno_data_t *)arg;
 
     server_stav_t *stav = data->stav;
     int socket = data->socket;
 
-    // single-client: uloz socket do stavu
     pthread_mutex_lock(&stav->mutex);
     stav->klient_socket = socket;
     pthread_mutex_unlock(&stav->mutex);
@@ -488,7 +486,6 @@ static void *vlakno_klient(void *arg) {
             (void)spracuj_prikaz(stav, socket, buffer);
         }
     }
-
     
     pthread_mutex_lock(&stav->mutex);
     stav->klient_socket = -1;
@@ -547,10 +544,9 @@ int main(int argc, char **argv) {
         data->stav = &stav;
         data->socket = klient;
 
-        // single-client: obsluha klienta prebehne v hlavnom vlákne (simulácia beží v samostatnom vlákne)
         (void)vlakno_klient(data);
     }
-close(stav.pasivny_socket);
+    close(stav.pasivny_socket);
 
     free(stav.policka);
 

@@ -229,7 +229,7 @@ void vykresli_interaktivne(klient_stav_t *stav, const char *stavovy_text) {
     return 0;
 }
 
-static int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y) {
+int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y) {
     if (grid == NULL || x == NULL || y == NULL) return -1;
 
     int sx = *x;
@@ -404,7 +404,7 @@ static int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y
                     continue;
                 }
 
-                /* ostatne texty (ACK...) nechaj len pred startom animacie */
+                
                 pthread_mutex_lock(&stav->mutex);
                 int trasa = stav->trasa_aktivna;
                 pthread_mutex_unlock(&stav->mutex);
@@ -417,7 +417,7 @@ static int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y
                 continue;
             }
 
-            /* --- Sumarny mod (povodne spravanie) --- */
+            /* --- Sumarny mod  --- */
             printf("\n");
 
             if (strstr(buffer, "# RandomWalk result") != NULL) {
@@ -625,7 +625,7 @@ static int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y
  void vytvor_novu_simulaciu(void) {
     int typ_svetu = 0;
 
-    printf("Typ sveta (0=torus bez prekazok, 1=svet s prekazkami): ");
+    printf("Typ sveta (0=svet bez prekazok, 1=svet s prekazkami): ");
     scanf("%d", &typ_svetu);
     vycisti_stdin();
 
@@ -634,7 +634,7 @@ static int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y
 
     char *policka = NULL;
 
-    if (typ_svetu == SVET_TORUS) {
+    if (typ_svetu == SVET_BEZPREKAZOK) {
         printf("Sirka: ");
         scanf("%d", &sirka);
         printf("Vyska: ");

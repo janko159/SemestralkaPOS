@@ -6,27 +6,15 @@
 #include <stdio.h>
 #include "common.h"
 
-static int index_policka(int x, int y, int sirka) {
+int index_policka(int x, int y, int sirka) {
     return y * sirka + x;
 }
 
-static int stred_x(int sirka) {
-    return sirka / 2;
-}
+int dosiahnutelne_vsetko(int sirka, int vyska, const char *policka) {
+    int ox = sirka / 2;
+    int oy = vyska / 2;
 
-static int stred_y(int vyska) {
-    return vyska / 2;
-}
-
-static int je_volne(const char *policka, int sirka, int x, int y) {
-    return policka[index_policka(x, y, sirka)] != '#';
-}
-
-static int bfs_dosiahnutelne_vsetko(int sirka, int vyska, const char *policka) {
-    int ox = stred_x(sirka);
-    int oy = stred_y(vyska);
-
-    if (!je_volne(policka, sirka, ox, oy)) {
+    if (!(policka[index_policka(ox, oy, sirka)] != '#')) { 
         return 0;
     }
 
@@ -67,7 +55,7 @@ static int bfs_dosiahnutelne_vsetko(int sirka, int vyska, const char *policka) {
                 continue;
             }
 
-            if (!je_volne(policka, sirka, nx, ny)) {
+            if (!(policka[index_policka(nx, ny, sirka)] != '#') ) {
                 continue;
             }
 
@@ -122,8 +110,8 @@ int simulacia_vygeneruj_prekazky(
         percento_prekazok = 90;
     }
 
-    int ox = stred_x(sirka);
-    int oy = stred_y(vyska);
+    int ox = sirka / 2;
+    int oy = vyska / 2;
 
     for (int pokus = 0; pokus < 200; pokus++) {
         char *p = (char *)malloc((size_t)(sirka * vyska));
@@ -149,7 +137,7 @@ int simulacia_vygeneruj_prekazky(
             }
         }
 
-        if (bfs_dosiahnutelne_vsetko(sirka, vyska, p)) {
+        if (dosiahnutelne_vsetko(sirka, vyska, p)) {
             *policka = p;
             return 0;
         }
@@ -177,7 +165,7 @@ void simulacia_uvolni_vysledok(vysledok_simulacie_t *vysledok) {
     vysledok->vyska = 0;
 }
 
-static int vyber_smer(double pravd_hore, double pravd_dole, double pravd_vlavo, double pravd_vpravo) {
+int vyber_smer(double pravd_hore, double pravd_dole, double pravd_vlavo, double pravd_vpravo) {
     double u = (double)rand() / ((double)RAND_MAX + 1.0);
 
     double a = pravd_hore;
@@ -200,7 +188,7 @@ static int vyber_smer(double pravd_hore, double pravd_dole, double pravd_vlavo, 
     return 3;
 }
 
-static void posun(
+void posun(
     int typ_svetu,
     int sirka,
     int vyska,
@@ -222,7 +210,7 @@ static void posun(
         nx++;
     }
 
-    if (typ_svetu == SVET_TORUS) {
+    if (typ_svetu == SVET_BEZPREKAZOK) {
         if (nx < 0) {
             nx = sirka - 1;
         }
@@ -270,7 +258,7 @@ int simulacia_spusti(
     int mod_simulacie,
     int start_x_trasa,
     int start_y_trasa,
-    int *stop_flag,
+    int *stop,
     void (*callback_priebeh)(int aktualna, int celkovo, void *user),
     void (*callback_trasa_text)(const char *text, void *user),
     void *user,
@@ -291,15 +279,15 @@ int simulacia_spusti(
         return -1;
     }
 
-    int ox = stred_x(sirka);
-    int oy = stred_y(vyska);
+    int ox = sirka / 2;
+    int oy = vyska / 2;
 
     int ind_trasa = index_policka(start_x_trasa, start_y_trasa, sirka);
 
-    int limit_krokov = sirka * vyska * 5000;
+    int limit_krokov = sirka * vyska * 1000;
 
     for (int rep = 1; rep <= pocet_replikacii; rep++) {
-        if (stop_flag != NULL && *stop_flag) {
+        if (stop != NULL && *stop) {
             break;
         }
 
@@ -309,7 +297,7 @@ int simulacia_spusti(
 
         for (int sy = 0; sy < vyska; sy++) {
             for (int sx = 0; sx < sirka; sx++) {
-                if (stop_flag != NULL && *stop_flag) {
+                if (stop != NULL && *stop) {
                     break;
                 }
 
@@ -334,7 +322,7 @@ int simulacia_spusti(
                 }
 
                 while (!(x == ox && y == oy) && kroky < limit_krokov) {
-                    if (stop_flag != NULL && *stop_flag) {
+                    if (stop != NULL && *stop) {
                         break;
                     }
                     int smer = vyber_smer(pravd_hore, pravd_dole, pravd_vlavo, pravd_vpravo);
@@ -405,5 +393,3 @@ int simulacia_spusti(
 
     return 0;
 }
-
-

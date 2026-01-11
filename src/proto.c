@@ -63,7 +63,7 @@ static int zo_siete(int hodnota) {
     return (int)ntohl((unsigned int)hodnota);
 }
 
-int proto_posli(int socket, int typ_spravy, const void *data, int dlzka) {
+ int proto_posli(int socket, int typ_spravy, const void *data, int dlzka) {
     hlavicka_t hlavicka;
 
     hlavicka.typ_siete = na_siet(typ_spravy);
@@ -82,7 +82,7 @@ int proto_posli(int socket, int typ_spravy, const void *data, int dlzka) {
     return 0;
 }
 
-int proto_prijmi(
+ int proto_prijmi(
     int socket,
     int *typ_spravy,
     void *buffer,

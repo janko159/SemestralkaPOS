@@ -1,4 +1,4 @@
-gifndef SPOLOCNE_H
+#ifndef SPOLOCNE_H
 #define SPOLOCNE_H
 
 #define MSG_PRIEBEH   1
@@ -6,7 +6,7 @@ gifndef SPOLOCNE_H
 #define MSG_CHYBA     3
 #define MSG_HOTOVO    4
 
-#define SVET_TORUS        0
+#define SVET_BEZPREKAZOK        0
 #define SVET_PREKAZKY     1
 
 #define MOD_SUMARNY       0

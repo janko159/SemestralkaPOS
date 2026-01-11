@@ -77,7 +77,7 @@ int persist_nacitaj_svet(
     return 0;
 }
 
-static int zacina_s(const char *riadok, const char *prefix) {
+ int zacina_s(const char *riadok, const char *prefix) {
     size_t a = strlen(prefix);
     return strncmp(riadok, prefix, a) == 0;
 }
@@ -225,7 +225,7 @@ char *persist_vytvor_text_vysledku(
 
     size_t pozicia = 0;
 
-    pozicia += (size_t)snprintf(text + pozicia, kapacita - pozicia, "# RandomWalk result\n");
+    pozicia += (size_t)snprintf(text + pozicia, kapacita - pozicia, "# Vysledok\n");
     pozicia += (size_t)snprintf(text + pozicia, kapacita - pozicia, "W %d\n", sirka);
     pozicia += (size_t)snprintf(text + pozicia, kapacita - pozicia, "H %d\n", vyska);
     pozicia += (size_t)snprintf(text + pozicia, kapacita - pozicia, "WORLD_TYPE %d\n", typ_svetu);

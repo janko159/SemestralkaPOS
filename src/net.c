@@ -11,6 +11,7 @@
 #include <sys/types.h>
 
 int net_pocuvaj(int port) {
+    /*Vytvorenie TCP socketu*/
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (socket_fd < 0) {
@@ -28,12 +29,12 @@ int net_pocuvaj(int port) {
     adresa.sin_family = AF_INET;
     adresa.sin_addr.s_addr = htonl(INADDR_ANY);
     adresa.sin_port = htons((uint16_t)port);
-
+    /*Priradi socket k portu*/
     if (bind(socket_fd, (struct sockaddr *)&adresa, sizeof(adresa)) < 0) {
         close(socket_fd);
         return -1;
     }
-
+    /*Server caka na clientov*/
     if (listen(socket_fd, 8) < 0) {
         close(socket_fd);
         return -1;
