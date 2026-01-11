@@ -11,7 +11,7 @@ typedef struct {
     int dlzka_siete;
 } hlavicka_t;
 
-static int precitaj_presne(int socket, void *buffer, int dlzka) {
+ int precitaj_presne(int socket, void *buffer, int dlzka) {
     int precitane = 0;
 
     while (precitane < dlzka) {
@@ -35,7 +35,7 @@ static int precitaj_presne(int socket, void *buffer, int dlzka) {
     return 1;
 }
 
-static int zapis_presne(int socket, const void *buffer, int dlzka) {
+ int zapis_presne(int socket, const void *buffer, int dlzka) {
     int zapisane = 0;
 
     while (zapisane < dlzka) {
@@ -55,11 +55,11 @@ static int zapis_presne(int socket, const void *buffer, int dlzka) {
     return 0;
 }
 
-static int na_siet(int hodnota) {
+ int na_siet(int hodnota) {
     return (int)htonl((unsigned int)hodnota);
 }
 
-static int zo_siete(int hodnota) {
+ int zo_siete(int hodnota) {
     return (int)ntohl((unsigned int)hodnota);
 }
 

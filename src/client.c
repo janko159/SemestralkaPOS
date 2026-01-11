@@ -384,7 +384,7 @@ int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y) {
                     continue;
                 }
 
-                /* vysledok simulacie: uloz do suboru, ale v interaktivnom mode ho nevypisuj */
+                /* vysledok simulacie: ulokladanie do suboru */
                 if (strstr(buffer, "# RandomWalk result") != NULL) {
                     pthread_mutex_lock(&stav->mutex);
 
@@ -465,7 +465,7 @@ int najdi_najblizsie_volne(int w, int h, const char *grid, int *x, int *y) {
     if (text == NULL) return;
     (void)proto_posli(socket, MSG_TEXT, text, (int)strlen(text));
 }
-
+/*Pomoc s AI*/
  int nacitaj_prikaz_neblokujuci(char *out, int cap, int timeout_ms) {
     if (out == NULL || cap <= 0) return 0;
 

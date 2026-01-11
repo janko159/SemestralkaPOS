@@ -77,7 +77,7 @@ int persist_nacitaj_svet(
     return 0;
 }
 
- int zacina_s(const char *riadok, const char *prefix) {
+int zacina_s(const char *riadok, const char *prefix) {
     size_t a = strlen(prefix);
     return strncmp(riadok, prefix, a) == 0;
 }
